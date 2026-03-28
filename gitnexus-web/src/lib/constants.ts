@@ -26,7 +26,7 @@ export const NODE_COLORS: Record<NodeLabel, string> = {
   TypeAlias: '#a78bfa',  // Violet light - like Type
   Const: '#64748b',      // Slate - like Variable
   Static: '#64748b',     // Slate - like Variable
-  Namespace: '#7c3aed',  // Violet - like Module
+  Namespace: '#7c3aed', // Violet - like Module
   Union: '#f97316',      // Orange - like Enum
   Typedef: '#a78bfa',    // Violet light - like Type
   Macro: '#eab308',      // Yellow - like Decorator
@@ -36,20 +36,26 @@ export const NODE_COLORS: Record<NodeLabel, string> = {
   Annotation: '#eab308', // Yellow - like Decorator
   Constructor: '#10b981', // Emerald - like Function
   Template: '#a78bfa',   // Violet light - like Type
+  // Java binary types
+  Jar: '#dc2626',        // Red - archive indicator
+  BytecodeClass: '#f97316', // Orange - like Class
+  BytecodeMethod: '#fb923c', // Orange light - like Method
+  BytecodeField: '#fdba74',  // Orange lighter - like Property
+  Jsp: '#22c55e',        // Green - web template
 };
 
 // Node sizes by type - clear visual hierarchy with dramatic size differences
 // Structural nodes are MUCH larger to make hierarchy obvious
 export const NODE_SIZES: Record<NodeLabel, number> = {
   Project: 20,     // Largest - root of everything
-  Package: 16,     // Major structural element
+  Package: 16,    // Major structural element
   Module: 13,      // Important container
   Folder: 10,      // Structural - clearly bigger than files
   File: 6,         // Common element - smaller than folders
   Class: 8,        // Important code structure
   Function: 4,     // Common code element - small
-  Method: 3,       // Smaller than function
-  Variable: 2,     // Tiny - leaf node
+  Method: 3,        // Smaller than function
+  Variable: 2,    // Tiny - leaf node
   Interface: 7,    // Important type definition
   Enum: 5,         // Type definition
   Decorator: 2,    // Tiny modifier
@@ -62,19 +68,25 @@ export const NODE_SIZES: Record<NodeLabel, number> = {
   Struct: 8,       // Like Class
   Trait: 7,        // Like Interface
   Impl: 3,         // Like Method
-  TypeAlias: 3,    // Like Type
+  TypeAlias: 3,     // Like Type
   Const: 2,        // Like Variable
-  Static: 2,       // Like Variable
+  Static: 2,        // Like Variable
   Namespace: 13,   // Like Module
-  Union: 5,        // Like Enum
+  Union: 5,         // Like Enum
   Typedef: 3,      // Like Type
-  Macro: 2,        // Like Decorator
-  Property: 2,     // Like Variable
-  Record: 8,       // Like Class
+  Macro: 2,         // Like Decorator
+  Property: 2,      // Like Variable
+  Record: 8,        // Like Class
   Delegate: 3,     // Like Method
   Annotation: 2,   // Like Decorator
   Constructor: 4,  // Like Function
   Template: 3,     // Like Type
+  // Java binary types
+  Jar: 9,          // Like Module - archive container
+  BytecodeClass: 7, // Like Class
+  BytecodeMethod: 3, // Like Method
+  BytecodeField: 2,  // Like Property
+  Jsp: 5,           // Like File - web template
 };
 
 // Community color palette for cluster-based coloring
@@ -125,6 +137,12 @@ export const FILTERABLE_LABELS: NodeLabel[] = [
   'Variable',
   'Decorator',
   'Import',
+  // Java binary types
+  'Jar',
+  'BytecodeClass',
+  'BytecodeMethod',
+  'BytecodeField',
+  'Jsp',
 ];
 
 // Edge/Relation types

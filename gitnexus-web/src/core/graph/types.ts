@@ -32,7 +32,13 @@ export type NodeLabel =
   | 'Delegate'
   | 'Annotation'
   | 'Constructor'
-  | 'Template';
+  | 'Template'
+  // Java binary file types
+  | 'Jar'
+  | 'BytecodeClass'
+  | 'BytecodeMethod'
+  | 'BytecodeField'
+  | 'Jsp';
 
 
 export type NodeProperties = {
