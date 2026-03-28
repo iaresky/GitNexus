@@ -35,7 +35,13 @@ export type NodeLabel =
   | 'Template'
   | 'Section'
   | 'Route'        // API route endpoint (e.g., /api/grants)
-  | 'Tool';        // MCP tool definition
+  | 'Tool'        // MCP tool definition
+  // Java binary file types
+  | 'Jar'         // JAR archive file
+  | 'BytecodeClass'  // Java class file (bytecode)
+  | 'BytecodeMethod' // Method in bytecode class
+  | 'BytecodeField'  // Field in bytecode class
+  | 'Jsp';           // JavaServer Pages file
 
 
 import { SupportedLanguages } from '../../config/supported-languages.js';
@@ -82,6 +88,17 @@ export type NodeProperties = {
   errorKeys?: string[],
   // Middleware wrapper chain (outermost first): ['withRateLimit', 'withCSRF', 'withAuth']
   middleware?: string[],
+  // Java binary file properties
+  isInterface?: boolean,        // For BytecodeClass: true if interface
+  accessFlags?: string[],       // Java access flags (public, private, etc.)
+  version?: string,             // Class file version (e.g., "52.0" for Java 8)
+  jarId?: string,              // Parent JAR file ID for bytecode classes
+  manifestMainClass?: string,   // JAR: Main-Class entry from manifest
+  classPath?: string[],        // JAR: Class-Path entries from manifest
+  entries?: number,            // JAR: Number of entries
+  bytecodeLength?: number,      // BytecodeMethod: length of bytecode
+  maxStack?: number,           // BytecodeMethod: max stack depth
+  maxLocals?: number,          // BytecodeMethod: max local variables
 }
 
 export type RelationshipType =
@@ -106,6 +123,10 @@ export type RelationshipType =
   | 'ENTRY_POINT_OF'  // Route/Tool → Process (this endpoint starts this execution flow)
   | 'WRAPS'           // Function → Function (middleware wrapper chain) — Reserved: future middleware graph traversal (not yet emitted)
   | 'QUERIES'          // File/Function → CodeElement (ORM query to model/table)
+  // Java binary file relationships
+  | 'CONTAINS_CLASS'    // Jar → BytecodeClass
+  | 'BYTECODE_CALLS'    // BytecodeMethod → BytecodeMethod/Class
+  | 'BYTECODE_ACCESSES' // BytecodeMethod → BytecodeField
 
 export interface GraphNode {
   id:  string,

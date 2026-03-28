@@ -507,6 +507,47 @@ async function runScanAndStructure(
     }
   }
 
+  // ── Phase 2.7: Java binary processing (JAR, Class, JSP) ─────────────
+  try {
+    const { processBinaryFiles, detectBinaryFiles } = await import('./binary-processor.js');
+    const { isBinaryIndexingEnabled } = await import('../../config/binary-indexing-config.js');
+
+    if (isBinaryIndexingEnabled()) {
+      const { jarPaths, classPaths, jspPaths } = detectBinaryFiles(allPaths);
+
+      if (jarPaths.length > 0 || classPaths.length > 0 || jspPaths.length > 0) {
+        const binaryResult = await processBinaryFiles(repoPath, [...jarPaths, ...classPaths, ...jspPaths]);
+
+        for (const node of binaryResult.graphNodes) {
+          graph.addNode(node);
+        }
+
+        for (const rel of binaryResult.graphRelationships) {
+          graph.addRelationship(rel);
+        }
+
+        if (isDev) {
+          if (binaryResult.jarFiles.length > 0) {
+            console.log(`  JAR: ${binaryResult.jarFiles.length} archives indexed`);
+          }
+          if (binaryResult.classFiles.length > 0) {
+            console.log(`  Class: ${binaryResult.classFiles.length} bytecode files indexed`);
+          }
+          if (binaryResult.jspFiles.length > 0) {
+            console.log(`  JSP: ${binaryResult.jspFiles.length} JSP files indexed`);
+          }
+          if (binaryResult.errors.length > 0) {
+            console.warn(`  Binary indexing errors: ${binaryResult.errors.length} files failed`);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (isDev) {
+      console.warn('  Binary processing skipped:', error instanceof Error ? error.message : String(error));
+    }
+  }
+
   return { scannedFiles, allPaths, totalFiles };
 }
 
