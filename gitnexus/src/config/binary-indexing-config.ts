@@ -8,10 +8,10 @@ export interface BinaryIndexingConfig {
 }
 
 export const DEFAULT_BINARY_INDEXING_CONFIG: BinaryIndexingConfig = {
-  enabled: false,
-  indexJar: false,
-  indexClass: false,
-  indexJsp: false,
+  enabled: true,
+  indexJar: true,
+  indexClass: true,
+  indexJsp: true,
   maxJarSize: 100 * 1024 * 1024,
   recursiveNestedJars: false,
 };
