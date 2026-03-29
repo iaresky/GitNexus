@@ -380,7 +380,12 @@ function readConstantPoolEntry(buffer: Buffer, offset: number): { entry: Constan
       break;
 
     default:
-      bytesRead = 1;
+      // Handle unknown tags by skipping bytes based on common tag sizes
+      // Most constant pool entries are at least 3 bytes
+      // Try to recover by treating unknown tags as 3-byte entries
+      if (tag !== 0) {
+        bytesRead = 3;
+      }
   }
 
   return { entry, bytesRead };
@@ -457,14 +462,43 @@ export function parseClassFile(buffer: Buffer): ClassFile {
   const constantPool: ConstantPoolEntry[] = [];
 
   let offset = 10;
+  const maxOffset = buffer.length;
+
   for (let i = 1; i < constantPoolCount; i++) {
+    // Safety check: ensure offset is within bounds
+    if (offset >= maxOffset || offset < 0) {
+      console.warn(`Constant pool parsing stopped at index ${i}: offset ${offset} is out of bounds`);
+      break;
+    }
+
     const { entry, bytesRead } = readConstantPoolEntry(buffer, offset);
     constantPool.push(entry);
+
+    // Validate bytesRead is reasonable
+    if (bytesRead <= 0 || bytesRead > 256) {
+      console.warn(`Constant pool parsing stopped at index ${i}: invalid bytesRead ${bytesRead}`);
+      break;
+    }
+
     offset += bytesRead;
 
     if (entry.tag === ConstantPoolTag.LONG || entry.tag === ConstantPoolTag.DOUBLE) {
       i++;
     }
+  }
+
+  // Check if we parsed all entries successfully
+  if (constantPool.length < constantPoolCount - 1) {
+    console.warn(`Constant pool parsing incomplete: parsed ${constantPool.length} entries, expected ${constantPoolCount - 1}`);
+    // Try to recover by calculating expected offset based on what we parsed
+    // If we didn't parse all entries, the remaining data is corrupted
+  }
+
+  // Recalculate offset based on constant pool size
+  // Each CP entry takes variable space, so we need a different approach
+  // For now, if the offset is too large, reset it to after the CP
+  if (offset > maxOffset || offset < 0) {
+    throw new Error(`Invalid class file structure: constant pool parsing resulted in invalid offset ${offset}. File may be corrupted.`);
   }
 
   for (const cpEntry of constantPool) {
