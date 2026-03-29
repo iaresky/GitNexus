@@ -467,38 +467,39 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
               <Target className="w-3 h-3 inline mr-1.5" />
               Focus Depth
             </h3>
-            <p className="text-[11px] text-text-muted mb-3">
-              Show nodes within N hops of selection
-            </p>
 
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { value: null, label: 'All' },
-                { value: 1, label: '1 hop' },
-                { value: 2, label: '2 hops' },
-                { value: 3, label: '3 hops' },
-                { value: 5, label: '5 hops' },
-              ].map(({ value, label }) => (
-                <button
-                  key={label}
-                  onClick={() => setDepthFilter(value)}
-                  className={`
-                    px-2 py-1 text-xs rounded transition-colors
-                    ${depthFilter === value
-                      ? 'bg-accent text-white'
-                      : 'bg-elevated text-text-secondary hover:bg-hover hover:text-text-primary'
-                    }
-                  `}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {depthFilter !== null && !selectedNode && (
-              <p className="mt-2 text-[10px] text-amber-400">
-                Select a node to apply depth filter
+            {!selectedNode ? (
+              <p className="text-[11px] text-amber-400 mb-3">
+                Select a node from the graph or search to see connected nodes
               </p>
+            ) : (
+              <>
+                <p className="text-[11px] text-text-muted mb-3">
+                  Show nodes within N hops of "{selectedNode.properties.name}"
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { value: 1, label: '1 hop' },
+                    { value: 2, label: '2 hops' },
+                    { value: 3, label: '3 hops' },
+                    { value: 5, label: '5 hops' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={label}
+                      onClick={() => setDepthFilter(value)}
+                      className={`
+                        px-2 py-1 text-xs rounded transition-colors
+                        ${depthFilter === value
+                          ? 'bg-accent text-white'
+                          : 'bg-elevated text-text-secondary hover:bg-hover hover:text-text-primary'
+                        }
+                      `}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
