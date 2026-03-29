@@ -388,3 +388,147 @@ export const filterGraphByDepth = (
     graph.setNodeAttribute(nodeId, 'hidden', !isLabelVisible || !isInRange);
   });
 };
+
+/**
+ * Build a subgraph containing only the nodes within N hops of a selected node.
+ * This creates a FRESH graph with newly calculated positions - no hidden nodes.
+ * Used for dynamic sub图 rendering when user selects/searches nodes.
+ */
+export const buildSubgraph = (
+  knowledgeGraph: KnowledgeGraph,
+  selectedNodeId: string,
+  maxHops: number,
+  visibleLabels: NodeLabel[]
+): Graph<SigmaNodeAttributes, SigmaEdgeAttributes> => {
+  // Get nodes within N hops
+  const nodesInRange = getNodesWithinHopsFromKG(knowledgeGraph, selectedNodeId, maxHops);
+
+  // Filter nodes by visible labels and create node lookup
+  const filteredNodeIds = new Set<string>();
+  const nodeMap = new Map(knowledgeGraph.nodes.map(n => [n.id, n]));
+
+  for (const nodeId of nodesInRange) {
+    const node = nodeMap.get(nodeId);
+    if (node && visibleLabels.includes(node.label)) {
+      filteredNodeIds.add(nodeId);
+    }
+  }
+
+  // Build subgraph with only relevant nodes and edges
+  const subgraph = new Graph<SigmaNodeAttributes, SigmaEdgeAttributes>();
+  const nodeCount = filteredNodeIds.size;
+
+  // Calculate layout parameters based on subgraph size (not full graph)
+  const spread = Math.max(300, nodeCount * 50);
+  const jitter = Math.max(20, nodeCount * 3);
+
+  // Position selected node at center
+  const selectedNode = nodeMap.get(selectedNodeId);
+  if (selectedNode && filteredNodeIds.has(selectedNodeId)) {
+    subgraph.addNode(selectedNodeId, {
+      x: 0,
+      y: 0,
+      size: NODE_SIZES[selectedNode.label] || 8,
+      color: NODE_COLORS[selectedNode.label] || '#9ca3af',
+      label: selectedNode.properties.name,
+      nodeType: selectedNode.label,
+      filePath: selectedNode.properties.filePath,
+      startLine: selectedNode.properties.startLine,
+      endLine: selectedNode.properties.endLine,
+      hidden: false,
+      mass: 2,
+    });
+  }
+
+  // Add other nodes in a radial pattern around selected node
+  const otherNodeIds = [...filteredNodeIds].filter(id => id !== selectedNodeId);
+  const angleStep = (2 * Math.PI) / Math.max(otherNodeIds.length, 1);
+
+  otherNodeIds.forEach((nodeId, index) => {
+    const node = nodeMap.get(nodeId);
+    if (!node) return;
+
+    const angle = index * angleStep;
+    const radius = spread * 0.4 + Math.random() * spread * 0.2;
+    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * jitter;
+    const y = Math.sin(angle) * radius + (Math.random() - 0.5) * jitter;
+
+    subgraph.addNode(nodeId, {
+      x,
+      y,
+      size: NODE_SIZES[node.label] || 8,
+      color: NODE_COLORS[node.label] || '#9ca3af',
+      label: node.properties.name,
+      nodeType: node.label,
+      filePath: node.properties.filePath,
+      startLine: node.properties.startLine,
+      endLine: node.properties.endLine,
+      hidden: false,
+      mass: 1,
+    });
+  });
+
+  // Add edges for relationships between filtered nodes
+  const edgeBaseSize = 0.8;
+  const EDGE_STYLES: Record<string, { color: string; sizeMultiplier: number }> = {
+    CONTAINS: { color: '#2d5a3d', sizeMultiplier: 0.4 },
+    DEFINES: { color: '#0e7490', sizeMultiplier: 0.5 },
+    IMPORTS: { color: '#1d4ed8', sizeMultiplier: 0.6 },
+    CALLS: { color: '#7c3aed', sizeMultiplier: 0.8 },
+    EXTENDS: { color: '#c2410c', sizeMultiplier: 1.0 },
+    IMPLEMENTS: { color: '#be185d', sizeMultiplier: 0.9 },
+  };
+
+  knowledgeGraph.relationships.forEach((rel) => {
+    if (filteredNodeIds.has(rel.sourceId) && filteredNodeIds.has(rel.targetId)) {
+      if (!subgraph.hasEdge(rel.sourceId, rel.targetId)) {
+        const style = EDGE_STYLES[rel.type] || { color: '#4a4a5a', sizeMultiplier: 0.5 };
+        const curvature = 0.12 + Math.random() * 0.08;
+
+        subgraph.addEdge(rel.sourceId, rel.targetId, {
+          size: edgeBaseSize * style.sizeMultiplier,
+          color: style.color,
+          relationType: rel.type,
+          type: 'curved',
+          curvature,
+        });
+      }
+    }
+  });
+
+  return subgraph;
+};
+
+/**
+ * Get all nodes within N hops from a KnowledgeGraph (not Sigma graph).
+ * Used for building subgraphs.
+ */
+const getNodesWithinHopsFromKG = (
+  knowledgeGraph: KnowledgeGraph,
+  startNodeId: string,
+  maxHops: number
+): Set<string> => {
+  const visited = new Set<string>();
+  const queue: { nodeId: string; depth: number }[] = [{ nodeId: startNodeId, depth: 0 }];
+
+  while (queue.length > 0) {
+    const { nodeId, depth } = queue.shift()!;
+
+    if (visited.has(nodeId)) continue;
+    visited.add(nodeId);
+
+    if (depth < maxHops) {
+      // Find all neighbors (both as source and target)
+      knowledgeGraph.relationships.forEach((rel) => {
+        if (rel.sourceId === nodeId && !visited.has(rel.targetId)) {
+          queue.push({ nodeId: rel.targetId, depth: depth + 1 });
+        }
+        if (rel.targetId === nodeId && !visited.has(rel.sourceId)) {
+          queue.push({ nodeId: rel.sourceId, depth: depth + 1 });
+        }
+      });
+    }
+  }
+
+  return visited;
+};

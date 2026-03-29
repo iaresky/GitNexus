@@ -2,7 +2,7 @@ import { useEffect, useCallback, useMemo, useState, forwardRef, useImperativeHan
 import { ZoomIn, ZoomOut, Maximize2, Focus, RotateCcw, Play, Pause, Lightbulb, LightbulbOff } from '@/lib/lucide-icons';
 import { useSigma } from '../hooks/useSigma';
 import { useAppState } from '../hooks/useAppState';
-import { knowledgeGraphToGraphology, filterGraphByDepth, SigmaNodeAttributes, SigmaEdgeAttributes } from '../lib/graph-adapter';
+import { knowledgeGraphToGraphology, buildSubgraph, SigmaNodeAttributes, SigmaEdgeAttributes } from '../lib/graph-adapter';
 import type { GraphNode } from '../core/graph/types';
 import { QueryFAB } from './QueryFAB';
 import Graph from 'graphology';
@@ -131,7 +131,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((_, ref) => {
     }
   }), [focusNode, graph, nodeById, setSelectedNode, openCodePanel]);
 
-  // Update Sigma graph when KnowledgeGraph changes
+  // Update Sigma graph when KnowledgeGraph or selection changes
   useEffect(() => {
     if (!graph) return;
 
@@ -151,22 +151,19 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((_, ref) => {
       }
     });
 
-    const sigmaGraph = knowledgeGraphToGraphology(graph, communityMemberships);
-    setSigmaGraph(sigmaGraph);
-  }, [graph, nodeById, setSigmaGraph]);
-
-  // Update node visibility when filters change
-  useEffect(() => {
-    const sigma = sigmaRef.current;
-    if (!sigma) return;
-
-    const sigmaGraph = sigma.getGraph() as Graph<SigmaNodeAttributes, SigmaEdgeAttributes>;
-    if (sigmaGraph.order === 0) return; // Don't filter empty graph
-
-    filterGraphByDepth(sigmaGraph, appSelectedNode?.id || null, depthFilter, visibleLabels);
-    sigma.refresh();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- sigmaRef identity never changes
-  }, [visibleLabels, depthFilter, appSelectedNode]);
+    // When a node is selected, build a subgraph with only connected nodes
+    // Otherwise, show empty graph (blank canvas)
+    if (appSelectedNode) {
+      const effectiveMaxHops = depthFilter !== null ? depthFilter : 1;
+      const sigmaGraph = buildSubgraph(graph, appSelectedNode.id, effectiveMaxHops, visibleLabels);
+      setSigmaGraph(sigmaGraph);
+    } else {
+      // Blank canvas when no node selected
+      const emptyGraph = new Graph<SigmaNodeAttributes, SigmaEdgeAttributes>();
+      setSigmaGraph(emptyGraph);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph, appSelectedNode, depthFilter, visibleLabels]);
 
   // Sync app selected node with sigma
   useEffect(() => {
