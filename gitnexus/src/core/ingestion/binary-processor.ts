@@ -4,8 +4,9 @@ import { readFileSync } from 'fs';
 import type { GraphNode, GraphRelationship } from '../graph/types.js';
 import { generateId } from '../../lib/utils.js';
 import { parseBytecodeFile, type BytecodeParseResult } from './bytecode-parser.js';
-import { analyzeJar, type JarIndexOptions, DEFAULT_JAR_OPTIONS, type ManifestInfo, type JarAnalysisResult } from './jar-analyzer.js';
+import { analyzeJar, type JarIndexOptions, DEFAULT_JAR_OPTIONS, type ManifestInfo, type JarAnalysisResult, type ClassFileAnalysis } from './jar-analyzer.js';
 import { parseJsp, buildJspGraph, analyzeJspCalls } from './jsp-parser.js';
+import { decompileBuffer, isDecompilerAvailable, type DecompileResult } from './decompiler.js';
 import {
   shouldIndexJar,
   shouldIndexClass,
@@ -16,7 +17,7 @@ import {
 
 export interface BinaryProcessResult {
   jarFiles: JarAnalysisResult[];
-  classFiles: BytecodeParseResult[];
+  classFiles: ClassFileAnalysis[];
   jspFiles: { jsp: ReturnType<typeof parseJsp>; nodes: GraphNode[]; relationships: GraphRelationship[] }[];
   graphNodes: GraphNode[];
   graphRelationships: GraphRelationship[];
@@ -55,19 +56,34 @@ export async function processClassFile(
   classPath: string,
   repoPath: string
 ): Promise<{
-  classResult: BytecodeParseResult;
+  classResult: ClassFileAnalysis;
   graphNodes: GraphNode[];
   graphRelationships: GraphRelationship[];
 }> {
   const fullPath = path.join(repoPath, classPath);
   const buffer = readFileSync(fullPath);
 
-  const classResult = await parseBytecodeFile(classPath, buffer);
+  const bytecodeResult = await parseBytecodeFile(classPath, buffer);
+
+  let decompileResult: DecompileResult | undefined;
+  if (isDecompilerAvailable()) {
+    try {
+      const className = classPath.replace(/\.class$/, '').replace(/\//g, '.');
+      decompileResult = await decompileBuffer(buffer, className);
+    } catch {
+    }
+  }
+
+  const analysis: ClassFileAnalysis = {
+    bytecodeResult,
+    decompileResult,
+    decompilerUsed: decompileResult?.decompiler,
+  };
 
   return {
-    classResult,
-    graphNodes: classResult.graphNodes,
-    graphRelationships: classResult.graphRelationships,
+    classResult: analysis,
+    graphNodes: bytecodeResult.graphNodes,
+    graphRelationships: bytecodeResult.graphRelationships,
   };
 }
 

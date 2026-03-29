@@ -234,6 +234,57 @@ export async function decompileJarEntry(
   }
 }
 
+export async function decompileBuffer(
+  classBuffer: Buffer,
+  className: string,
+  options?: {
+    preferredDecompiler?: 'cfr' | 'procyon' | 'fernflower' | 'bytecode';
+  }
+): Promise<DecompileResult> {
+  if (!config.enabled) {
+    return { success: false, error: 'Decompiler disabled', decompiler: 'bytecode' };
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gitnexus-decomp-'));
+
+  try {
+    const tempClassPath = path.join(tempDir, `${className.replace(/\//g, '_')}.class`);
+    fs.writeFileSync(tempClassPath, classBuffer);
+
+    return await decompileClass(tempClassPath, {
+      preferredDecompiler: options?.preferredDecompiler,
+    });
+  } finally {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+    }
+  }
+}
+
+export function isDecompilerAvailable(): boolean {
+  const availableDecompilers = ['cfr', 'procyon', 'fernflower'];
+  for (const name of availableDecompilers) {
+    if (checkDecompilerAvailable(name as 'cfr' | 'procyon' | 'fernflower')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function getAvailableDecompilers(): Array<'cfr' | 'procyon' | 'fernflower'> {
+  const available: Array<'cfr' | 'procyon' | 'fernflower'> = [];
+  const decompilers: Array<'cfr' | 'procyon' | 'fernflower'> = ['cfr', 'procyon', 'fernflower'];
+
+  for (const name of decompilers) {
+    if (checkDecompilerAvailable(name)) {
+      available.push(name);
+    }
+  }
+
+  return available;
+}
+
 export interface LineNumberInfo {
   startPc: number;
   lineNumber: number;

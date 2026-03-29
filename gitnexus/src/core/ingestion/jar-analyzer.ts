@@ -6,6 +6,7 @@ import type { Readable, Transform } from 'node:stream';
 import type { GraphNode, GraphRelationship, NodeLabel } from '../graph/types.js';
 import { generateId } from '../../lib/utils.js';
 import { parseBytecodeFile, type BytecodeParseResult, type ClassFile } from './bytecode-parser.js';
+import { decompileBuffer, isDecompilerAvailable, getAvailableDecompilers, type DecompileResult } from './decompiler.js';
 
 const pump = promisify(pipeline);
 
@@ -14,6 +15,8 @@ export interface JarIndexOptions {
   maxJarSize: number;
   recursiveNestedJars: boolean;
   skipResources: boolean;
+  enableDecompile?: boolean;
+  decompileOnly?: boolean;
 }
 
 export const DEFAULT_JAR_OPTIONS: JarIndexOptions = {
@@ -21,6 +24,8 @@ export const DEFAULT_JAR_OPTIONS: JarIndexOptions = {
   maxJarSize: 100 * 1024 * 1024,
   recursiveNestedJars: false,
   skipResources: false,
+  enableDecompile: true,
+  decompileOnly: false,
 };
 
 export interface JarEntry {
@@ -36,13 +41,21 @@ export interface ManifestInfo {
   entries: Map<string, string>;
 }
 
+export interface ClassFileAnalysis {
+  bytecodeResult: BytecodeParseResult;
+  decompileResult?: DecompileResult;
+  decompilerUsed?: string;
+}
+
 export interface JarAnalysisResult {
   jarPath: string;
   manifest?: ManifestInfo;
-  classFiles: Map<string, BytecodeParseResult>;
+  classFiles: Map<string, ClassFileAnalysis>;
   nestedJars: Map<string, JarAnalysisResult>;
   graphNodes: GraphNode[];
   graphRelationships: GraphRelationship[];
+  decompilerAvailable: boolean;
+  availableDecompilers: string[];
   error?: string;
 }
 
@@ -197,12 +210,18 @@ export async function analyzeJar(
   jarPath: string,
   options: JarIndexOptions = DEFAULT_JAR_OPTIONS
 ): Promise<JarAnalysisResult> {
+  const enableDecompile = options.enableDecompile ?? true;
+  const decompilerAvailable = isDecompilerAvailable();
+  const availableDecompilers = getAvailableDecompilers();
+
   const result: JarAnalysisResult = {
     jarPath,
     classFiles: new Map(),
     nestedJars: new Map(),
     graphNodes: [],
     graphRelationships: [],
+    decompilerAvailable,
+    availableDecompilers,
   };
 
   try {
@@ -265,11 +284,33 @@ export async function analyzeJar(
       try {
         const classResult = await parseBytecodeFile(classPath, entry.data);
 
-        result.classFiles.set(classPath, classResult);
+        let decompileResult: DecompileResult | undefined;
+        if (enableDecompile && decompilerAvailable) {
+          try {
+            const className = classPath.replace(/\.class$/, '').replace(/\//g, '.');
+            decompileResult = await decompileBuffer(entry.data, className);
+            if (decompileResult.success) {
+              (jarNode.properties as Record<string, unknown>).description =
+                `JAR archive with ${classEntries.size} classes (decompiled with ${decompileResult.decompiler})`;
+            }
+          } catch {
+          }
+        }
+
+        const analysis: ClassFileAnalysis = {
+          bytecodeResult: classResult,
+          decompileResult,
+          decompilerUsed: decompileResult?.decompiler,
+        };
+
+        result.classFiles.set(classPath, analysis);
 
         for (const node of classResult.graphNodes) {
           const modifiedNode = { ...node };
           (modifiedNode.properties as Record<string, unknown>).jarId = jarId;
+          if (decompileResult?.success && decompileResult.sourceCode) {
+            (modifiedNode.properties as Record<string, unknown>).decompiledSource = decompileResult.sourceCode;
+          }
           result.graphNodes.push(modifiedNode);
 
           result.graphRelationships.push({
