@@ -570,8 +570,9 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
     // Only animate camera if selecting a new node
     if (!alreadySelected) {
       const nodeAttrs = graph.getNodeAttributes(nodeId);
+      // Use larger ratio (0.5) so nodes appear bigger by default
       sigma.getCamera().animate(
-        { x: nodeAttrs.x, y: nodeAttrs.y, ratio: 0.15 },
+        { x: nodeAttrs.x, y: nodeAttrs.y, ratio: 0.5 },
         { duration: 400 }
       );
     }

@@ -418,17 +418,23 @@ export const buildSubgraph = (
   const subgraph = new Graph<SigmaNodeAttributes, SigmaEdgeAttributes>();
   const nodeCount = filteredNodeIds.size;
 
-  // Calculate layout parameters based on subgraph size (not full graph)
-  const spread = Math.max(300, nodeCount * 50);
-  const jitter = Math.max(20, nodeCount * 3);
+  // Calculate layout parameters - optimized for visibility without zooming
+  // Smaller spread = nodes closer together, readable without zoom
+  const spread = nodeCount <= 10 ? 150 : nodeCount <= 30 ? 200 : 280;
+  const jitter = nodeCount <= 10 ? 15 : nodeCount <= 30 ? 25 : 35;
+
+  // Size multiplier to make nodes visible without zooming
+  // Subgraph nodes should be much larger than full-graph nodes
+  const sizeMultiplier = nodeCount <= 10 ? 4 : nodeCount <= 30 ? 3 : 2.5;
 
   // Position selected node at center
   const selectedNode = nodeMap.get(selectedNodeId);
   if (selectedNode && filteredNodeIds.has(selectedNodeId)) {
+    const baseSize = NODE_SIZES[selectedNode.label] || 10;
     subgraph.addNode(selectedNodeId, {
       x: 0,
       y: 0,
-      size: NODE_SIZES[selectedNode.label] || 8,
+      size: baseSize * sizeMultiplier,
       color: NODE_COLORS[selectedNode.label] || '#9ca3af',
       label: selectedNode.properties.name,
       nodeType: selectedNode.label,
@@ -437,6 +443,7 @@ export const buildSubgraph = (
       endLine: selectedNode.properties.endLine,
       hidden: false,
       mass: 2,
+      zIndex: 10, // Keep selected node on top
     });
   }
 
@@ -449,14 +456,16 @@ export const buildSubgraph = (
     if (!node) return;
 
     const angle = index * angleStep;
-    const radius = spread * 0.4 + Math.random() * spread * 0.2;
+    // Position nodes closer to center for better visibility
+    const radius = spread * 0.35 + Math.random() * spread * 0.1;
     const x = Math.cos(angle) * radius + (Math.random() - 0.5) * jitter;
     const y = Math.sin(angle) * radius + (Math.random() - 0.5) * jitter;
 
+    const baseSize = NODE_SIZES[node.label] || 10;
     subgraph.addNode(nodeId, {
       x,
       y,
-      size: NODE_SIZES[node.label] || 8,
+      size: baseSize * sizeMultiplier,
       color: NODE_COLORS[node.label] || '#9ca3af',
       label: node.properties.name,
       nodeType: node.label,
@@ -465,11 +474,12 @@ export const buildSubgraph = (
       endLine: node.properties.endLine,
       hidden: false,
       mass: 1,
+      zIndex: 1,
     });
   });
 
   // Add edges for relationships between filtered nodes
-  const edgeBaseSize = 0.8;
+  const edgeBaseSize = nodeCount <= 10 ? 1.5 : nodeCount <= 30 ? 1.2 : 1.0;
   const EDGE_STYLES: Record<string, { color: string; sizeMultiplier: number }> = {
     CONTAINS: { color: '#2d5a3d', sizeMultiplier: 0.4 },
     DEFINES: { color: '#0e7490', sizeMultiplier: 0.5 },
