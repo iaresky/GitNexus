@@ -359,7 +359,9 @@ export const getNodesWithinHops = (
 };
 
 /**
- * Filter nodes by depth from selected node
+ * Filter nodes by depth from selected node.
+ * When a node is selected, only shows nodes directly connected to it (1 hop).
+ * When no node is selected, shows all nodes (filtered by label only).
  */
 export const filterGraphByDepth = (
   graph: Graph<SigmaNodeAttributes, SigmaEdgeAttributes>,
@@ -367,18 +369,18 @@ export const filterGraphByDepth = (
   maxHops: number | null,
   visibleLabels: NodeLabel[]
 ): void => {
-  if (maxHops === null) {
-    filterGraphByLabels(graph, visibleLabels);
-    return;
-  }
-  
+  // When no node is selected, show all nodes (filtered by label only)
   if (selectedNodeId === null || !graph.hasNode(selectedNodeId)) {
     filterGraphByLabels(graph, visibleLabels);
     return;
   }
-  
-  const nodesInRange = getNodesWithinHops(graph, selectedNodeId, maxHops);
-  
+
+  // When a node IS selected, only show nodes directly connected to it (1 hop)
+  // regardless of maxHops setting. This ensures searching/clicking a node
+  // only shows its connected nodes, not the entire graph.
+  const effectiveMaxHops = maxHops !== null ? maxHops : 1;
+  const nodesInRange = getNodesWithinHops(graph, selectedNodeId, effectiveMaxHops);
+
   graph.forEachNode((nodeId, attributes) => {
     const isLabelVisible = visibleLabels.includes(attributes.nodeType);
     const isInRange = nodesInRange.has(nodeId);
