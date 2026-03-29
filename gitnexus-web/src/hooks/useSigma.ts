@@ -215,18 +215,18 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
         curved: EdgeCurveProgram,
       },
       
-      // Custom hover renderer - dark background instead of white
+      // Custom hover renderer - more prominent highlight for better mouse visibility
       defaultDrawNodeHover: (context, data, settings) => {
         const label = data.label;
         if (!label) return;
-        
+
         const size = settings.labelSize || 11;
         const font = settings.labelFont || 'JetBrains Mono, monospace';
         const weight = settings.labelWeight || '500';
-        
+
         context.font = `${weight} ${size}px ${font}`;
         const textWidth = context.measureText(label).width;
-        
+
         const nodeSize = data.size || 8;
         const x = data.x;
         const y = data.y - nodeSize - 10;
@@ -235,31 +235,46 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
         const height = size + paddingY * 2;
         const width = textWidth + paddingX * 2;
         const radius = 4;
-        
+
         // Dark background pill
         context.fillStyle = '#12121c';
         context.beginPath();
         context.roundRect(x - width / 2, y - height / 2, width, height, radius);
         context.fill();
-        
-        // Border matching node color
+
+        // Border matching node color - thicker for visibility
         context.strokeStyle = data.color || '#6366f1';
-        context.lineWidth = 2;
+        context.lineWidth = 2.5;
         context.stroke();
-        
+
         // Label text - light color
         context.fillStyle = '#f5f5f7';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(label, x, y);
-        
-        // Also draw a subtle glow ring around the node
+
+        // Draw MORE PROMINENT glow ring around the node - multiple rings for visibility
+        // Outer glow
         context.beginPath();
-        context.arc(data.x, data.y, nodeSize + 4, 0, Math.PI * 2);
+        context.arc(data.x, data.y, nodeSize + 10, 0, Math.PI * 2);
         context.strokeStyle = data.color || '#6366f1';
-        context.lineWidth = 2;
-        context.globalAlpha = 0.5;
+        context.lineWidth = 3;
+        context.globalAlpha = 0.2;
         context.stroke();
+
+        // Middle glow
+        context.beginPath();
+        context.arc(data.x, data.y, nodeSize + 6, 0, Math.PI * 2);
+        context.globalAlpha = 0.4;
+        context.stroke();
+
+        // Inner glow - most visible
+        context.beginPath();
+        context.arc(data.x, data.y, nodeSize + 3, 0, Math.PI * 2);
+        context.lineWidth = 2;
+        context.globalAlpha = 0.7;
+        context.stroke();
+
         context.globalAlpha = 1;
       },
       
@@ -378,7 +393,13 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
             }
           }
         }
-        
+
+        // Hover state - make hovered node more prominent
+        if (res.highlighted && !currentSelected) {
+          res.size = (data.size || 8) * 1.5;
+          res.zIndex = 5;
+        }
+
         return res;
       },
       

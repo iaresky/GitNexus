@@ -343,7 +343,7 @@ body {
 
 /* ═══════════════════════════════════════════════════════════════
    SIGMA.JS CONTAINER
-═══════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 .sigma-container {
   width: 100%;
   height: 100%;
@@ -351,4 +351,6 @@ body {
 
 .sigma-container canvas {
   outline: none;
+  /* Improve mouse cursor visibility - pointer on nodes */
+  cursor: crosshair;
 }
