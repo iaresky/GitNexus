@@ -1483,3 +1483,40 @@ describe('Java cross-file binding propagation', () => {
     expect(getNameEdge).toBeDefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Java static method calls: scoped_identifier and field_access receivers
+// Issue: FileCopyUtils.copy() and org.apache.commons.io.FileUtils.forceDelete()
+// should be resolvable via class-as-receiver
+// ---------------------------------------------------------------------------
+
+describe('Java static method call with scoped_identifier and field_access receivers', () => {
+  let result: PipelineResult;
+
+  beforeAll(async () => {
+    result = await runPipelineFromRepo(
+      path.join(FIXTURES, 'java-static-method-calls'),
+      () => {},
+    );
+  }, 60000);
+
+  it('detects FileCopyUtils class with copy method', () => {
+    expect(getNodesByLabel(result, 'Class')).toContain('FileCopyUtils');
+    expect(getNodesByLabel(result, 'Method')).toContain('copy');
+  });
+
+  it('detects FileHandler class with handleFile method', () => {
+    expect(getNodesByLabel(result, 'Class')).toContain('FileHandler');
+    expect(getNodesByLabel(result, 'Method')).toContain('handleFile');
+  });
+
+  it('resolves FileCopyUtils.copy() via scoped_identifier receiver', () => {
+    const calls = getRelationships(result, 'CALLS');
+    const copyCall = calls.find(c =>
+      c.target === 'copy' &&
+      c.source === 'handleFile' &&
+      c.targetFilePath?.includes('FileHandler'),
+    );
+    expect(copyCall).toBeDefined();
+  });
+});

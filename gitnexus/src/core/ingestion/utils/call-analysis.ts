@@ -152,16 +152,37 @@ export const inferCallForm = (
 const SIMPLE_RECEIVER_TYPES = new Set([
   'identifier',
   'simple_identifier',
-  'variable_name',     // PHP $variable (tree-sitter-php)
-  'name',              // PHP name node
-  'this',              // TS/JS/Java/C# this.method()
-  'self',              // Rust/Python self.method()
-  'super',             // TS/JS/Java/Kotlin/Ruby super.method()
-  'super_expression',  // Kotlin wraps super in super_expression
-  'base',              // C# base.Method()
-  'parent',            // PHP parent::method()
-  'constant',          // Ruby CONSTANT.method() (uppercase identifiers)
+  'scoped_identifier',    // Java: FileCopyUtils in FileCopyUtils.copy()
+  'variable_name',         // PHP $variable (tree-sitter-php)
+  'name',                  // PHP name node
+  'this',                  // TS/JS/Java/C# this.method()
+  'self',                  // Rust/Python self.method()
+  'super',                 // TS/JS/Java/Kotlin/Ruby super.method()
+  'super_expression',      // Kotlin wraps super in super_expression
+  'base',                  // C# base.Method()
+  'parent',                // PHP parent::method()
+  'constant',              // Ruby CONSTANT.method() (uppercase identifiers)
 ]);
+
+/**
+ * Recursively extract the base name from a chain of field_access nodes.
+ * For Java fully-qualified names like org.apache.commons.io.FileUtils,
+ * the AST is a chain of field_access nodes: field_access(field_access(...), field: FileUtils)
+ * This function walks down to the deepest field identifier.
+ */
+const extractFieldAccessBaseName = (node: SyntaxNode): string | undefined => {
+  const field = node.childForFieldName('field');
+  if (field) {
+    // Found a field at this level, check if there's a nested field_access as object
+    const object = node.childForFieldName('object');
+    if (object?.type === 'field_access') {
+      return extractFieldAccessBaseName(object);
+    }
+    // This is the deepest level - return the field name
+    return field.text;
+  }
+  return undefined;
+};
 
 export const extractReceiverName = (
   nameNode: SyntaxNode,
@@ -252,6 +273,12 @@ export const extractReceiverName = (
   if (receiver.type === 'call') {
     const func = receiver.childForFieldName('function');
     if (func?.text === 'super') return 'super';
+  }
+
+  // Java field_access: fully-qualified names like org.apache.commons.io.FileUtils
+  // Walk the field_access chain to extract the base class name
+  if (receiver.type === 'field_access') {
+    return extractFieldAccessBaseName(receiver);
   }
 
   return undefined;
