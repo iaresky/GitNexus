@@ -45,14 +45,65 @@ export const Header = ({ onFocusNode, availableRepos = [], onSwitchRepo }: Heade
   const nodeCount = graph?.nodes.length ?? 0;
   const edgeCount = graph?.relationships.length ?? 0;
 
-  // Search results - filter nodes by name
+  // Search results - filter nodes by name with call chain association
   const searchResults = useMemo(() => {
     if (!graph || !searchQuery.trim()) return [];
 
     const query = searchQuery.toLowerCase();
-    return graph.nodes
-      .filter(node => node.properties.name.toLowerCase().includes(query))
-      .slice(0, 10); // Limit to 10 results
+    
+    // Step 1: Find nodes matching the search query
+    const matchedNodes = graph.nodes.filter(
+      node => node.properties.name.toLowerCase().includes(query)
+    );
+
+    if (matchedNodes.length === 0) return [];
+
+    // If few results, return them directly without call chain filtering
+    if (matchedNodes.length <= 3) {
+      return matchedNodes.slice(0, 10);
+    }
+
+    // Step 2: Build a set of node IDs that are call-chain related to matched nodes
+    // This includes:
+    // - Nodes that matched nodes CALL (callees)
+    // - Nodes that CALL matched nodes (callers)
+    // - The matched nodes themselves
+    const relatedNodeIds = new Set<string>();
+    
+    for (const node of matchedNodes) {
+      relatedNodeIds.add(node.id);
+    }
+
+    // Step 3: Find call-chain neighbors via CALLS edges
+    for (const rel of graph.relationships) {
+      if (rel.type === 'CALLS') {
+        // If the target is a matched node, add the source (caller)
+        if (relatedNodeIds.has(rel.targetId)) {
+          relatedNodeIds.add(rel.sourceId);
+        }
+        // If the source is a matched node, add the target (callee)
+        if (relatedNodeIds.has(rel.sourceId)) {
+          relatedNodeIds.add(rel.targetId);
+        }
+      }
+    }
+
+    // Step 4: Filter to only show nodes that are call-chain related AND match the query
+    // This prioritizes nodes that are both searchable AND connected to other matched nodes
+    const associatedNodes = graph.nodes.filter(
+      node => relatedNodeIds.has(node.id)
+    );
+
+    // Sort: matched nodes first, then related nodes, limit results
+    const matchedSet = new Set(matchedNodes.map(n => n.id));
+    const sortedResults = associatedNodes.sort((a, b) => {
+      const aMatched = matchedSet.has(a.id) ? 0 : 1;
+      const bMatched = matchedSet.has(b.id) ? 0 : 1;
+      if (aMatched !== bMatched) return aMatched - bMatched;
+      return (a.properties.name || '').localeCompare(b.properties.name || '');
+    });
+
+    return sortedResults.slice(0, 10);
   }, [graph, searchQuery]);
 
   // Handle clicking outside to close dropdowns

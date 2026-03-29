@@ -229,6 +229,30 @@ export const CodeReferencesPanel = ({ onFocusNode }: CodeReferencesPanelProps) =
   const showSelectedViewer = !!selectedNode && !!selectedFilePath;
   const showCitations = aiReferences.length > 0;
 
+  // Compute direct callees (methods/functions this node calls) for method/function nodes
+  const directCallees = useMemo(() => {
+    if (!graph || !selectedNode) return [];
+    const nodeLabel = selectedNode.label;
+    if (!['Method', 'Function', 'BytecodeMethod'].includes(nodeLabel)) return [];
+
+    const callees: GraphNode[] = [];
+    const addedIds = new Set<string>();
+
+    for (const rel of graph.relationships) {
+      if (rel.type === 'CALLS' && rel.sourceId === selectedNode.id) {
+        const targetNode = graph.nodes.find(n => n.id === rel.targetId);
+        if (targetNode && !addedIds.has(targetNode.id)) {
+          addedIds.add(targetNode.id);
+          callees.push(targetNode);
+        }
+      }
+    }
+
+    return callees;
+  }, [graph, selectedNode]);
+
+  const selectedIsCallable = selectedNode && ['Method', 'Function', 'BytecodeMethod'].includes(selectedNode.label);
+
   if (isCollapsed) {
     return (
       <aside className="h-full w-12 bg-surface border-r border-border-subtle flex flex-col items-center py-3 gap-2 flex-shrink-0">
@@ -357,6 +381,47 @@ export const CodeReferencesPanel = ({ onFocusNode }: CodeReferencesPanelProps) =
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Direct Callees Panel - shown when a method/function is selected */}
+        {selectedIsCallable && directCallees.length > 0 && (
+          <div className="border-t border-border-subtle bg-gradient-to-b from-violet-500/5 to-transparent">
+            <div className="px-3 py-2 bg-gradient-to-r from-violet-500/8 to-purple-500/5 border-b border-violet-500/20 flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-violet-500/15 rounded-md border border-violet-500/25">
+                <Target className="w-3 h-3 text-violet-400" />
+                <span className="text-[10px] text-violet-300 font-semibold uppercase tracking-wide">Direct Callees</span>
+              </div>
+              <span className="text-xs text-text-muted ml-1">{directCallees.length} method{directCallees.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex-1 min-h-0 overflow-auto max-h-48 scrollbar-thin p-2 space-y-1">
+              {directCallees.map((callee) => {
+                const nodeColor = (NODE_COLORS as any)[callee.label] || '#6b7280';
+                return (
+                  <button
+                    key={callee.id}
+                    onClick={() => {
+                      if (graph) {
+                        setSelectedNode(callee);
+                      }
+                      onFocusNode(callee.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 bg-elevated/50 hover:bg-hover border border-border-subtle hover:border-violet-500/30 rounded-lg transition-all group text-left"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: nodeColor }}
+                    />
+                    <span className="text-xs text-text-primary font-mono truncate flex-1 group-hover:text-violet-300 transition-colors">
+                      {callee.properties.name}
+                    </span>
+                    <span className="text-[10px] text-text-muted px-1.5 py-0.5 bg-surface rounded border border-border-subtle">
+                      {callee.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

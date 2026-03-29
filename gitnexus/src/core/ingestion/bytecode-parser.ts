@@ -970,13 +970,12 @@ export async function parseBytecodeFile(filePath: string, buffer: Buffer): Promi
       const targetClassId = generateId('BytecodeClass', `${filePath}:${call.owner}`);
       const targetMethodId = generateId('BytecodeMethod', `${filePath}:${call.owner}.${call.name}${call.descriptor || ''}`);
 
-      const resolvedTargetId = methodId;
       const confidence = call.isDynamic ? 0.5 : 1.0;
 
       allRelationships.push({
-        id: generateId('CALLS', `${methodId}->${resolvedTargetId}`),
+        id: generateId('CALLS', `${methodId}->${targetMethodId}`),
         sourceId: methodId,
-        targetId: resolvedTargetId,
+        targetId: targetMethodId,
         type: 'CALLS',
         confidence,
         reason: call.isDynamic ? 'dynamic_dispatch' : 'bytecode_invocation',
