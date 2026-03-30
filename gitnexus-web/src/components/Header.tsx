@@ -1,4 +1,4 @@
-import { Search, Settings, HelpCircle, Sparkles, Github, Star, ChevronDown } from '@/lib/lucide-icons';
+import { Search, Settings, HelpCircle, Sparkles, Github, Star, ChevronDown, ShieldAlert } from '@/lib/lucide-icons';
 import { useAppState } from '../hooks/useAppState';
 import type { RepoSummary } from '../services/server-connection';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -28,6 +28,8 @@ export const Header = ({ onFocusNode, availableRepos = [], onSwitchRepo }: Heade
   const {
     projectName,
     graph,
+    viewMode,
+    setViewMode,
     openChatPanel,
     isRightPanelOpen,
     rightPanelTab,
@@ -260,6 +262,20 @@ export const Header = ({ onFocusNode, availableRepos = [], onSwitchRepo }: Heade
 
         {/* Embedding Status */}
         <EmbeddingStatus />
+
+        {/* Upload Tracker Button */}
+        <button
+          onClick={() => setViewMode('upload-tracker')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            viewMode === 'upload-tracker'
+              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+              : 'text-text-secondary hover:text-red-400 hover:bg-red-500/10'
+          }`}
+          title="Upload Vulnerability Tracker"
+        >
+          <ShieldAlert className="w-4 h-4" />
+          <span>Upload Tracker</span>
+        </button>
 
         {/* Icon buttons */}
         <button

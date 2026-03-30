@@ -28,6 +28,7 @@ const AppContent = () => {
     isRightPanelOpen,
     runPipeline,
     runPipelineFromFiles,
+    runQuery,
     isSettingsPanelOpen,
     setSettingsPanelOpen,
     refreshLLMSettings,
@@ -43,6 +44,7 @@ const AppContent = () => {
     setAvailableRepos,
     switchRepo,
     loadServerGraph,
+    graph,
   } = useAppState();
 
   const graphCanvasRef = useRef<GraphCanvasHandle>(null);
@@ -257,6 +259,22 @@ const AppContent = () => {
 
   if (viewMode === 'loading' && progress) {
     return <LoadingOverlay progress={progress} />;
+  }
+
+  if (viewMode === 'upload-tracker') {
+    return (
+      <div className="flex flex-col h-screen bg-void overflow-hidden">
+        <Header onFocusNode={handleFocusNode} availableRepos={availableRepos} onSwitchRepo={switchRepo} />
+        <main className="flex-1 min-h-0">
+          <UploadTrackerPage
+            graph={graph}
+            runQuery={runQuery}
+            onBack={() => setViewMode('exploring')}
+          />
+        </main>
+        <StatusBar />
+      </div>
+    );
   }
 
   // Exploring view

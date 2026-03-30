@@ -17,7 +17,7 @@ import { normalizePath, resolveFilePath as resolvePathFromContents } from '../li
 import { FILE_REF_REGEX, NODE_REF_REGEX } from '../lib/grounding-patterns';
 import { GraphStateProvider, useGraphState } from './app-state/graph';
 
-export type ViewMode = 'onboarding' | 'loading' | 'exploring';
+export type ViewMode = 'onboarding' | 'loading' | 'exploring' | 'upload-tracker';
 export type RightPanelTab = 'code' | 'chat';
 export type EmbeddingStatus = 'idle' | 'loading' | 'embedding' | 'indexing' | 'ready' | 'error';
 
